@@ -1,0 +1,23 @@
+app MultiState initial state buzz {
+    bricks
+        Actuator led : 12
+        Actuator buzzer : 11
+        Sensor button : 8
+
+    states
+        buzz {
+            buzzer <= HIGH
+            led <= LOW
+            button is HIGH => led_on
+        }
+        led_on {
+            buzzer <= LOW
+            led <= HIGH
+            button is HIGH => off
+        }
+        off {
+            buzzer <= LOW
+            led <= LOW
+            button is HIGH => buzz
+        }
+}

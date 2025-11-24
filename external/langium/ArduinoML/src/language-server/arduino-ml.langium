@@ -34,8 +34,27 @@ State :
 Action :
 	actuator=[Actuator:ID] '<=' value=Signal;
 
-Transition :
-	sensor=[Sensor:ID] 'is' value=Signal '=>' next=[State:ID];
+Transition:
+    condition=Expr '=>' next=[State:ID];
+
+Expr:
+    OrExpr;
+
+OrExpr:
+    {infer OrExpr}
+    left=AndExpr 'OR' right=OrExpr
+  | {infer OrExpr} AndExpr;
+
+AndExpr:
+    {infer AndExpr}
+    left=Condition 'AND' right=AndExpr
+  | {infer AndExpr} Condition;
+
+Condition:
+    {infer Condition}
+    sensor=[Sensor:ID] 'is' value=Signal
+  | '(' expr=Expr ')';
+
 
 Signal:
     value=(HIGH | LOW);

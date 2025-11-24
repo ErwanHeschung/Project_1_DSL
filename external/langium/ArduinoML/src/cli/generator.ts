@@ -98,13 +98,46 @@ long `+brick.name+`LastDebounceTime = 0;
 					digitalWrite(`+action.actuator.ref?.outputPin+`,`+action.value.value+`);`)
 	}
 
-	function compileTransition(transition: Transition, fileNode:CompositeGeneratorNode) {
+	function compileTransition(transition: Transition, fileNode: CompositeGeneratorNode) {
+		const sensors = collectSensors(transition.condition);
+
+		sensors.forEach(sensor => {
+			fileNode.append(`${sensor.name}BounceGuard = millis() - ${sensor.name}LastDebounceTime > debounce;\n`);
+		});
+
+		const conditionCode = compileExpr(transition.condition);
+
 		fileNode.append(`
-		 			`+transition.sensor.ref?.name+`BounceGuard = millis() - `+transition.sensor.ref?.name+`LastDebounceTime > debounce;
-					if( digitalRead(`+transition.sensor.ref?.inputPin+`) == `+transition.value.value+` && `+transition.sensor.ref?.name+`BounceGuard) {
-						`+transition.sensor.ref?.name+`LastDebounceTime = millis();
-						currentState = `+transition.next.ref?.name+`;
-					}
-		`)
+			if (${conditionCode}) {
+				${sensors.map(s => `${s.name}LastDebounceTime = millis();`).join('\n')}
+				currentState = ${transition.next.ref?.name};
+			}
+		`);
 	}
 
+	function compileExpr(expr: any): string {
+		if ('left' in expr && 'right' in expr) {
+			const left = compileExpr(expr.left);
+			const right = compileExpr(expr.right);
+			if (expr.$type === 'OrExpr') return `(${left} || ${right})`;
+			if (expr.$type === 'AndExpr') return `(${left} && ${right})`;
+		} else if ('sensor' in expr && 'value' in expr) {
+			const sensorName = expr.sensor.ref.name;
+			const value = expr.value.value;
+			return `(digitalRead(${expr.sensor.ref.inputPin}) == ${value} && ${sensorName}BounceGuard)`;
+		} else if ('condition' in expr) {
+			return `(${compileExpr(expr.condition)})`;
+		}
+		throw new Error("Unknown Expr type");
+	}
+
+	function collectSensors(expr: any): { name: string }[] {
+		if ('left' in expr && 'right' in expr) {
+			return [...collectSensors(expr.left), ...collectSensors(expr.right)];
+		} else if ('sensor' in expr) {
+			return [{ name: expr.sensor.ref.name }];
+		} else if ('condition' in expr) {
+			return collectSensors(expr.condition);
+		}
+		return [];
+	}

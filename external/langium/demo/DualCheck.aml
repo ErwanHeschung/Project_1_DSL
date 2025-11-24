@@ -1,0 +1,16 @@
+app DualCheck initial state idle {
+    bricks
+        Actuator buzzer : 11
+        Sensor b1 : 8
+        Sensor b2 : 9
+
+    states
+        idle {
+            buzzer <= LOW
+            b1 is HIGH AND b2 is HIGH => on
+        }
+        on {
+            buzzer <= HIGH
+            b1 is LOW OR b2 is LOW => idle
+        }
+}
