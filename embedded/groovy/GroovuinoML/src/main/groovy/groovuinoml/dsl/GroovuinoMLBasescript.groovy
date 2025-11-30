@@ -3,6 +3,9 @@ package main.groovy.groovuinoml.dsl
 import io.github.mosser.arduinoml.kernel.behavioral.TimeUnit
 import io.github.mosser.arduinoml.kernel.behavioral.Action
 import io.github.mosser.arduinoml.kernel.behavioral.State
+import io.github.mosser.arduinoml.kernel.behavioral.Condition
+import io.github.mosser.arduinoml.kernel.behavioral.And
+import io.github.mosser.arduinoml.kernel.behavioral.Or
 import io.github.mosser.arduinoml.kernel.structural.Actuator
 import io.github.mosser.arduinoml.kernel.structural.Sensor
 import io.github.mosser.arduinoml.kernel.structural.SIGNAL
@@ -48,22 +51,56 @@ abstract class GroovuinoMLBasescript extends Script {
 	
 	// from state1 to state2 when sensor becomes signal
 	def from(state1) {
-		[to: { state2 -> 
-			[when: { sensor ->
-				[becomes: { signal -> 
-					((GroovuinoMLBinding) this.getBinding()).getGroovuinoMLModel().createTransition(
-						state1 instanceof String ? (State)((GroovuinoMLBinding)this.getBinding()).getVariable(state1) : (State)state1, 
-						state2 instanceof String ? (State)((GroovuinoMLBinding)this.getBinding()).getVariable(state2) : (State)state2, 
-						sensor instanceof String ? (Sensor)((GroovuinoMLBinding)this.getBinding()).getVariable(sensor) : (Sensor)sensor, 
-						signal instanceof String ? (SIGNAL)((GroovuinoMLBinding)this.getBinding()).getVariable(signal) : (SIGNAL)signal)
+		[to: { state2 ->
+			// recursive closure to allow multiple and/or chains
+			def closure
+			closure = { sensor ->
+				[becomes: { signal ->
+					Sensor sensorObj = sensor instanceof String ? (Sensor)((GroovuinoMLBinding)this.getBinding()).getVariable(sensor) : (Sensor)sensor
+					SIGNAL signalObj = signal instanceof String ? (SIGNAL)((GroovuinoMLBinding)this.getBinding()).getVariable(signal) : (SIGNAL)signal
+					
+					Condition condition = new Condition()
+					condition.setSensor(sensorObj)
+					condition.setValue(signalObj)
+		
+					State fromState = state1 instanceof String ? (State)((GroovuinoMLBinding)this.getBinding()).getVariable(state1) : (State)state1
+					State toState = state2 instanceof String ? (State)((GroovuinoMLBinding)this.getBinding()).getVariable(state2) : (State)state2
+					def model = ((GroovuinoMLBinding) this.getBinding()).getGroovuinoMLModel()
+	
+					if(fromState.getTransition() == null) {
+						model.createTransition(fromState, toState, condition)
+					} else {
+						def existing = fromState.getTransition().getExpression()
+						And a = new And()
+						a.setLeftExpression(existing)
+						a.setRightExpression(condition)
+						fromState.getTransition().setExpression(a)
+					}
+					[and: closure, or: { s2 ->
+						Sensor sensorObj2 = s2 instanceof String ? (Sensor)((GroovuinoMLBinding)this.getBinding()).getVariable(s2) : (Sensor)s2
+						[becomes: { signal2 ->
+							SIGNAL signalObj2 = signal2 instanceof String ? (SIGNAL)((GroovuinoMLBinding)this.getBinding()).getVariable(signal2) : (SIGNAL)signal2
+							Condition condition2 = new Condition()
+							condition2.setSensor(sensorObj2)
+							condition2.setValue(signalObj2)
+							def existing = fromState.getTransition().getExpression()
+							Or o = new Or()
+							o.setLeftExpression(existing)
+							o.setRightExpression(condition2)
+							fromState.getTransition().setExpression(o)
+							[and: closure, or: closure]
+						}]
+					}]
 				}]
-			},
-			after: { delay ->
-				((GroovuinoMLBinding) this.getBinding()).getGroovuinoMLModel().createTransition(
-						state1 instanceof String ? (State)((GroovuinoMLBinding)this.getBinding()).getVariable(state1) : (State)state1,
-						state2 instanceof String ? (State)((GroovuinoMLBinding)this.getBinding()).getVariable(state2) : (State)state2,
-						delay)
-			}]
+			} 
+
+			[when: closure,
+			 after: { delay ->
+				 ((GroovuinoMLBinding) this.getBinding()).getGroovuinoMLModel().createTransition(
+					 state1 instanceof String ? (State)((GroovuinoMLBinding)this.getBinding()).getVariable(state1) : (State)state1,
+					 state2 instanceof String ? (State)((GroovuinoMLBinding)this.getBinding()).getVariable(state2) : (State)state2,
+					 delay)
+			 }]
 		}]
 	}
 	

@@ -112,16 +112,67 @@ public class ToWiring extends Visitor<StringBuffer> {
 			return;
 		}
 		if(context.get("pass") == PASS.TWO) {
-			String sensorName = transition.getSensor().getName();
-			w(String.format("\t\t\t%sBounceGuard = millis() - %sLastDebounceTime > debounce;\n",
-					sensorName, sensorName));
-			w(String.format("\t\t\tif( digitalRead(%d) == %s && %sBounceGuard) {\n",
-					transition.getSensor().getPin(), transition.getValue(), sensorName));
-			w(String.format("\t\t\t\t%sLastDebounceTime = millis();\n", sensorName));
+			Expression expression = transition.getExpression();
+			// Update bounce times for all sensors in the expression
+			updateBounceGuards(expression);
+			w("\t\t\tif( ");
+			expression.accept(this);
+			w(" ) {\n");
+			// Assign debounce time for all sensors when transition is triggered
+			assignDebounceTime(expression);
 			w("\t\t\t\tcurrentState = " + transition.getNext().getName() + ";\n");
 			w("\t\t\t}\n");
-			return;
 		}
+	}
+
+	private void updateBounceGuards(Expression expression) {
+		if (expression instanceof Condition) {
+			Condition condition = (Condition) expression;
+			String sensorName = condition.getSensor().getName();
+			w(String.format("\t\t\t%sBounceGuard = millis() - %sLastDebounceTime > debounce;\n",
+					sensorName, sensorName));
+		} else if (expression instanceof BinaryExpression) {
+			BinaryExpression binary = (BinaryExpression) expression;
+			updateBounceGuards(binary.getLeftExpression());
+			updateBounceGuards(binary.getRightExpression());
+		}
+	}
+
+	private void assignDebounceTime(Expression expression) {
+		if (expression instanceof Condition) {
+			Condition condition = (Condition) expression;
+			String sensorName = condition.getSensor().getName();
+			w(String.format("\t\t\t\t%sLastDebounceTime = millis();\n", sensorName));
+		} else if (expression instanceof BinaryExpression) {
+			BinaryExpression binary = (BinaryExpression) expression;
+			assignDebounceTime(binary.getLeftExpression());
+			assignDebounceTime(binary.getRightExpression());
+		}
+	}
+
+	@Override
+	public void visit(Condition condition) {
+		String sensorName = condition.getSensor().getName();
+		w(String.format("digitalRead(%d) == %s && %sBounceGuard",
+				condition.getSensor().getPin(), condition.getValue(), sensorName));
+	}
+
+	@Override
+	public void visit(And and) {
+		w("(");
+		and.getLeftExpression().accept(this);
+		w(") && (");
+		and.getRightExpression().accept(this);
+		w(")");
+	}
+
+	@Override
+	public void visit(Or or) {
+		w("(");
+		or.getLeftExpression().accept(this);
+		w(") || (");
+		or.getRightExpression().accept(this);
+		w(")");
 	}
 
 	@Override
