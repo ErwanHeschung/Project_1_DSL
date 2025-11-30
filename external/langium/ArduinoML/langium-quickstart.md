@@ -30,7 +30,7 @@ This folder contains all necessary files for your language extension.
 ## Make changes
 
  * Run `npm run watch` to have the TypeScript compiler run automatically after every change of the source files.
- * Run `npm run langium:watch` to have the Langium generator run automatically afer every change of the grammar declaration.
+ * Run `npm run langium:watch` to have the Langium generator run automatically after every change of the grammar declaration.
  * You can relaunch the extension from the debug toolbar after making changes to the files listed above.
  * You can also reload (`Ctrl+R` or `Cmd+R` on Mac) the VS Code window with your extension to load your changes.
 

@@ -3,63 +3,59 @@ grammar ArduinoMl
 entry App:
 	'app' name=ID 'initial' 'state' initial=[State:ID]
 	'{'
+		('error_led' ':' errorLed=INT)?
+
 		'bricks'
 		bricks+=Brick
 		(bricks+=Brick)* 
 		
 		'states'
 		states+=State
-		( states+=State)* 		
+		(states+=State)* 		
 	'}';
 
-Brick :
-	(Actuator | Sensor);
+Brick:
+	Actuator | Sensor;
 
 Actuator:
-	{infer Actuator}
 	'Actuator' name=ID ':' outputPin=INT;
 
-Sensor :
-	{infer Sensor}
-	'Sensor'  name=ID ':' inputPin=INT;
-	
-State :
+Sensor:
+	'Sensor' name=ID ':' inputPin=INT;
+
+State: 
+	NormalState | ErrorState;
+
+ErrorState:
+	'error' ',' name=ID ',' 'code' ',' errorCode=INT;
+
+NormalState:
 	name=ID '{'
-		actions+=Action
-		(actions+=Action)* 
+		(actions+=Action)*
 		transition=Transition
 	'}';
 
-
-Action :
+Action:
 	actuator=[Actuator:ID] '<=' value=Signal;
 
 Transition:
-    condition=Expr '=>' next=[State:ID];
+	condition=Expr '=>' next=[State:ID];
 
 Expr:
-    OrExpr;
+	OrExpr;
 
-OrExpr:
-    {infer OrExpr}
-    left=AndExpr 'OR' right=OrExpr
-  | {infer OrExpr} AndExpr;
+OrExpr infers Expr:
+	AndExpr ({infer OrExpr.left=current} 'OR' right=AndExpr)*;
 
-AndExpr:
-    {infer AndExpr}
-    left=Condition 'AND' right=AndExpr
-  | {infer AndExpr} Condition;
+AndExpr infers Expr:
+	Condition ({infer AndExpr.left=current} 'AND' right=Condition)*;
 
-Condition:
-    {infer Condition}
-    sensor=[Sensor:ID] 'is' value=Signal
-  | '(' expr=Expr ')';
-
+Condition infers Expr:
+	{infer Condition} sensor=[Sensor:ID] 'is' value=Signal
+	| '(' Expr ')';
 
 Signal:
-    value=(HIGH | LOW);
-terminal HIGH : 'HIGH';
-terminal LOW : 'LOW';
+	value=('HIGH' | 'LOW');
 
 hidden terminal WS: /\s+/;
 terminal ID: /[_a-zA-Z][\w_]*/;
