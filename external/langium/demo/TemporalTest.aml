@@ -1,0 +1,15 @@
+app TemporalTest initial state off {
+    bricks
+        Actuator led : 12
+        Sensor button : 8
+    
+    states
+        off {
+            led <= LOW
+            button is HIGH => on
+        }
+        on {
+            led <= HIGH
+            after 1000 => off
+        }
+}

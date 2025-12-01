@@ -143,8 +143,8 @@ function compileNormalState(
     compileAction(action, fileNode);
   }
 
-  if (state.transition !== null) {
-    compileTransition(state.transition, fileNode);
+  for (const transition of state.transitions) {
+    compileTransition(transition, fileNode);
   }
 
   fileNode.append(`\t\t\tbreak;`, NL);
@@ -161,27 +161,33 @@ function compileTransition(
   transition: Transition,
   fileNode: CompositeGeneratorNode,
 ) {
-  const sensors = collectSensors(transition.condition);
+    if ('delay' in transition) {
+    fileNode.append(`\t\t\tdelay(${transition.delay});`, NL);
+    fileNode.append(`\t\t\tcurrentState = ${transition.next.ref?.name};`, NL);
+  } 
+  else if ('condition' in transition) {
+    const sensors = collectSensors(transition.condition);
 
-  fileNode.append(`\t\t\t// Update bounce guards`, NL);
-  sensors.forEach((sensor) => {
-    fileNode.append(
-      `\t\t\t${sensor.name}BounceGuard = millis() - ${sensor.name}LastDebounceTime > debounce;`,
-      NL,
-    );
-  });
-  fileNode.append(NL);
+    fileNode.append(`\t\t\t// Update bounce guards`, NL);
+    sensors.forEach((sensor) => {
+      fileNode.append(
+        `\t\t\t${sensor.name}BounceGuard = millis() - ${sensor.name}LastDebounceTime > debounce;`,
+        NL,
+      );
+    });
+    fileNode.append(NL);
 
-  const conditionCode = compileExpr(transition.condition);
-  fileNode.append(`\t\t\t// Check transition condition`, NL);
-  fileNode.append(`\t\t\tif (${conditionCode}) {`, NL);
+    const conditionCode = compileExpr(transition.condition);
+    fileNode.append(`\t\t\t// Check transition condition`, NL);
+    fileNode.append(`\t\t\tif (${conditionCode}) {`, NL);
 
-  sensors.forEach((sensor) => {
-    fileNode.append(`\t\t\t\t${sensor.name}LastDebounceTime = millis();`, NL);
-  });
+    sensors.forEach((sensor) => {
+      fileNode.append(`\t\t\t\t${sensor.name}LastDebounceTime = millis();`, NL);
+    });
 
-  fileNode.append(`\t\t\t\tcurrentState = ${transition.next.ref?.name};`, NL);
-  fileNode.append(`\t\t\t}`, NL);
+    fileNode.append(`\t\t\t\tcurrentState = ${transition.next.ref?.name};`, NL);
+    fileNode.append(`\t\t\t}`, NL);
+  }
 }
 
 function compileExpr(expr: any): string {

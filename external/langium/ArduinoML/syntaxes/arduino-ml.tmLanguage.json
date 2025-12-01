@@ -10,7 +10,7 @@
     },
     {
       "name": "keyword.control.arduino-ml",
-      "match": "\\b(Actuator|AND|app|bricks|code|error|error_led|HIGH|initial|is|LOW|OR|Sensor|state|states)\\b"
+      "match": "\\b(Actuator|after|AND|app|bricks|code|error|error_led|HIGH|initial|is|LOW|OR|Sensor|state|states)\\b"
     },
     {
       "name": "string.quoted.double.arduino-ml",
