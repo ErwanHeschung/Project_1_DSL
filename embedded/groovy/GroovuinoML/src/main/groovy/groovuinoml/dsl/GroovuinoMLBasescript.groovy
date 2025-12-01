@@ -49,58 +49,65 @@ abstract class GroovuinoMLBasescript extends Script {
 		((GroovuinoMLBinding) this.getBinding()).getGroovuinoMLModel().setInitialState(state instanceof String ? (State)((GroovuinoMLBinding)this.getBinding()).getVariable(state) : (State)state)
 	}
 	
-	// from state1 to state2 when sensor becomes signal
+	def resolve(obj) {
+		(obj instanceof String) ? ((GroovuinoMLBinding)this.getBinding()).getVariable(obj) : obj
+	}
+
 	def from(state1) {
 		[to: { state2 ->
-			// recursive closure to allow multiple and/or chains
+
 			def closure
 			closure = { sensor ->
 				[becomes: { signal ->
-					Sensor sensorObj = sensor instanceof String ? (Sensor)((GroovuinoMLBinding)this.getBinding()).getVariable(sensor) : (Sensor)sensor
-					SIGNAL signalObj = signal instanceof String ? (SIGNAL)((GroovuinoMLBinding)this.getBinding()).getVariable(signal) : (SIGNAL)signal
-					
-					Condition condition = new Condition()
-					condition.setSensor(sensorObj)
-					condition.setValue(signalObj)
-		
-					State fromState = state1 instanceof String ? (State)((GroovuinoMLBinding)this.getBinding()).getVariable(state1) : (State)state1
-					State toState = state2 instanceof String ? (State)((GroovuinoMLBinding)this.getBinding()).getVariable(state2) : (State)state2
-					def model = ((GroovuinoMLBinding) this.getBinding()).getGroovuinoMLModel()
-	
-					if(fromState.getTransition() == null) {
-						model.createTransition(fromState, toState, condition)
-					} else {
-						def existing = fromState.getTransition().getExpression()
-						And a = new And()
-						a.setLeftExpression(existing)
-						a.setRightExpression(condition)
-						fromState.getTransition().setExpression(a)
-					}
-					[and: closure, or: { s2 ->
-						Sensor sensorObj2 = s2 instanceof String ? (Sensor)((GroovuinoMLBinding)this.getBinding()).getVariable(s2) : (Sensor)s2
-						[becomes: { signal2 ->
-							SIGNAL signalObj2 = signal2 instanceof String ? (SIGNAL)((GroovuinoMLBinding)this.getBinding()).getVariable(signal2) : (SIGNAL)signal2
-							Condition condition2 = new Condition()
-							condition2.setSensor(sensorObj2)
-							condition2.setValue(signalObj2)
-							def existing = fromState.getTransition().getExpression()
-							Or o = new Or()
-							o.setLeftExpression(existing)
-							o.setRightExpression(condition2)
-							fromState.getTransition().setExpression(o)
-							[and: closure, or: closure]
-						}]
-					}]
-				}]
-			} 
 
+					Sensor sensorObj = resolve(sensor) as Sensor
+					SIGNAL signalObj = resolve(signal) as SIGNAL
+					Condition condition = new Condition(sensor: sensorObj, value: signalObj)
+
+					State fromState = resolve(state1) as State
+					State toState = resolve(state2) as State
+					def model = ((GroovuinoMLBinding)this.getBinding()).groovuinoMLModel
+
+					if (fromState.transition == null) {
+						model.createTransition(fromState, toState, condition)
+					}
+
+					def andClosure, orClosure
+					andClosure = { s2 ->
+						Sensor sObj = resolve(s2) as Sensor
+						[becomes: { sig2 ->
+							SIGNAL sigObj = resolve(sig2) as SIGNAL
+							Condition cond2 = new Condition(sensor: sObj, value: sigObj)
+							def existing = fromState.transition.expression
+							And a = new And(leftExpression: existing, rightExpression: cond2)
+							fromState.transition.expression = a
+							[and: andClosure, or: orClosure]
+						}]
+					}
+
+					orClosure = { s2 ->
+						Sensor sObj = resolve(s2) as Sensor
+						[becomes: { sig2 ->
+							SIGNAL sigObj = resolve(sig2) as SIGNAL
+							Condition cond2 = new Condition(sensor: sObj, value: sigObj)
+							def existing = fromState.transition.expression
+							Or o = new Or(leftExpression: existing, rightExpression: cond2)
+							fromState.transition.expression = o
+							[and: andClosure, or: orClosure]
+						}]
+					}
+
+					[and: andClosure, or: orClosure]
+				}]
+			}
+
+			// Optionnel : after delay
 			[when: closure,
-			 after: { delay ->
-				 ((GroovuinoMLBinding) this.getBinding()).getGroovuinoMLModel().createTransition(
-					 state1 instanceof String ? (State)((GroovuinoMLBinding)this.getBinding()).getVariable(state1) : (State)state1,
-					 state2 instanceof String ? (State)((GroovuinoMLBinding)this.getBinding()).getVariable(state2) : (State)state2,
-					 delay)
-			 }]
+			after: { delay ->
+				State fState = resolve(state1) as State
+				State tState = resolve(state2) as State
+				((GroovuinoMLBinding)this.getBinding()).groovuinoMLModel.createTransition(fState, tState, delay)
+			}]
 		}]
 	}
 	
