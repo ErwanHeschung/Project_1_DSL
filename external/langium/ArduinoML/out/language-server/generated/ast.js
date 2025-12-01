@@ -4,7 +4,7 @@
  * DO NOT EDIT MANUALLY!
  ******************************************************************************/
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.reflection = exports.ArduinoMlAstReflection = exports.isTransition = exports.Transition = exports.isSignal = exports.Signal = exports.isSensor = exports.Sensor = exports.isOrExpr = exports.OrExpr = exports.isNormalState = exports.NormalState = exports.isErrorState = exports.ErrorState = exports.isCondition = exports.Condition = exports.isApp = exports.App = exports.isAndExpr = exports.AndExpr = exports.isActuator = exports.Actuator = exports.isAction = exports.Action = exports.isState = exports.State = exports.isExpr = exports.Expr = exports.isBrick = exports.Brick = void 0;
+exports.reflection = exports.ArduinoMlAstReflection = exports.isSensorTransition = exports.SensorTransition = exports.isDelayTransition = exports.DelayTransition = exports.isTransition = exports.Transition = exports.isSignal = exports.Signal = exports.isSensor = exports.Sensor = exports.isOrExpr = exports.OrExpr = exports.isNormalState = exports.NormalState = exports.isErrorState = exports.ErrorState = exports.isCondition = exports.Condition = exports.isApp = exports.App = exports.isAndExpr = exports.AndExpr = exports.isActuator = exports.Actuator = exports.isAction = exports.Action = exports.isState = exports.State = exports.isExpr = exports.Expr = exports.isBrick = exports.Brick = void 0;
 /* eslint-disable */
 const langium_1 = require("langium");
 exports.Brick = 'Brick';
@@ -77,9 +77,19 @@ function isTransition(item) {
     return exports.reflection.isInstance(item, exports.Transition);
 }
 exports.isTransition = isTransition;
+exports.DelayTransition = 'DelayTransition';
+function isDelayTransition(item) {
+    return exports.reflection.isInstance(item, exports.DelayTransition);
+}
+exports.isDelayTransition = isDelayTransition;
+exports.SensorTransition = 'SensorTransition';
+function isSensorTransition(item) {
+    return exports.reflection.isInstance(item, exports.SensorTransition);
+}
+exports.isSensorTransition = isSensorTransition;
 class ArduinoMlAstReflection extends langium_1.AbstractAstReflection {
     getAllTypes() {
-        return ['Action', 'Actuator', 'AndExpr', 'App', 'Brick', 'Condition', 'ErrorState', 'Expr', 'NormalState', 'OrExpr', 'Sensor', 'Signal', 'State', 'Transition'];
+        return ['Action', 'Actuator', 'AndExpr', 'App', 'Brick', 'Condition', 'DelayTransition', 'ErrorState', 'Expr', 'NormalState', 'OrExpr', 'Sensor', 'SensorTransition', 'Signal', 'State', 'Transition'];
     }
     computeIsSubtype(subtype, supertype) {
         switch (subtype) {
@@ -96,6 +106,10 @@ class ArduinoMlAstReflection extends langium_1.AbstractAstReflection {
             case exports.NormalState: {
                 return this.isSubtype(exports.State, supertype);
             }
+            case exports.DelayTransition:
+            case exports.SensorTransition: {
+                return this.isSubtype(exports.Transition, supertype);
+            }
             default: {
                 return false;
             }
@@ -108,6 +122,8 @@ class ArduinoMlAstReflection extends langium_1.AbstractAstReflection {
                 return exports.Actuator;
             }
             case 'App:initial':
+            case 'DelayTransition:next':
+            case 'SensorTransition:next':
             case 'Transition:next': {
                 return exports.State;
             }
@@ -134,7 +150,8 @@ class ArduinoMlAstReflection extends langium_1.AbstractAstReflection {
                 return {
                     name: 'NormalState',
                     mandatory: [
-                        { name: 'actions', type: 'array' }
+                        { name: 'actions', type: 'array' },
+                        { name: 'transitions', type: 'array' }
                     ]
                 };
             }

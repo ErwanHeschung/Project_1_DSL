@@ -30,17 +30,23 @@ ErrorState:
 	'error' ',' name=ID ',' 'code' ',' errorCode=INT;
 
 NormalState:
-	name=ID '{'
-		(actions+=Action)*
-		transition=Transition
-	'}';
+    name=ID '{'
+        (actions+=Action)*
+        (transitions+=Transition)*
+    '}';
 
 Action:
 	actuator=[Actuator:ID] '<=' value=Signal;
 
 Transition:
-	condition=Expr '=>' next=[State:ID];
+    (SensorTransition | DelayTransition) '=>' next=[State:ID];
 
+SensorTransition:
+    condition=Expr;
+
+DelayTransition:
+    'after' delay=INT;
+	
 Expr:
 	OrExpr;
 

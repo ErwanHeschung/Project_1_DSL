@@ -57,7 +57,7 @@ export function isActuator(item: unknown): item is Actuator {
 }
 
 export interface AndExpr extends AstNode {
-    readonly $container: AndExpr | OrExpr | Transition;
+    readonly $container: AndExpr | OrExpr | SensorTransition;
     readonly $type: 'AndExpr';
     left: Expr
     right: Expr
@@ -85,7 +85,7 @@ export function isApp(item: unknown): item is App {
 }
 
 export interface Condition extends AstNode {
-    readonly $container: AndExpr | OrExpr | Transition;
+    readonly $container: AndExpr | OrExpr | SensorTransition;
     readonly $type: 'Condition';
     sensor: Reference<Sensor>
     value: Signal
@@ -115,7 +115,7 @@ export interface NormalState extends AstNode {
     readonly $type: 'NormalState';
     actions: Array<Action>
     name: string
-    transition: Transition
+    transitions: Array<Transition>
 }
 
 export const NormalState = 'NormalState';
@@ -125,7 +125,7 @@ export function isNormalState(item: unknown): item is NormalState {
 }
 
 export interface OrExpr extends AstNode {
-    readonly $container: AndExpr | OrExpr | Transition;
+    readonly $container: AndExpr | OrExpr | SensorTransition;
     readonly $type: 'OrExpr';
     left: Expr
     right: Expr
@@ -164,8 +164,7 @@ export function isSignal(item: unknown): item is Signal {
 
 export interface Transition extends AstNode {
     readonly $container: NormalState;
-    readonly $type: 'Transition';
-    condition: Expr
+    readonly $type: 'DelayTransition' | 'SensorTransition' | 'Transition';
     next: Reference<State>
 }
 
@@ -175,6 +174,30 @@ export function isTransition(item: unknown): item is Transition {
     return reflection.isInstance(item, Transition);
 }
 
+export interface DelayTransition extends Transition {
+    readonly $container: NormalState;
+    readonly $type: 'DelayTransition';
+    delay: number
+}
+
+export const DelayTransition = 'DelayTransition';
+
+export function isDelayTransition(item: unknown): item is DelayTransition {
+    return reflection.isInstance(item, DelayTransition);
+}
+
+export interface SensorTransition extends Transition {
+    readonly $container: NormalState;
+    readonly $type: 'SensorTransition';
+    condition: Expr
+}
+
+export const SensorTransition = 'SensorTransition';
+
+export function isSensorTransition(item: unknown): item is SensorTransition {
+    return reflection.isInstance(item, SensorTransition);
+}
+
 export interface ArduinoMlAstType {
     Action: Action
     Actuator: Actuator
@@ -182,11 +205,13 @@ export interface ArduinoMlAstType {
     App: App
     Brick: Brick
     Condition: Condition
+    DelayTransition: DelayTransition
     ErrorState: ErrorState
     Expr: Expr
     NormalState: NormalState
     OrExpr: OrExpr
     Sensor: Sensor
+    SensorTransition: SensorTransition
     Signal: Signal
     State: State
     Transition: Transition
@@ -195,7 +220,7 @@ export interface ArduinoMlAstType {
 export class ArduinoMlAstReflection extends AbstractAstReflection {
 
     getAllTypes(): string[] {
-        return ['Action', 'Actuator', 'AndExpr', 'App', 'Brick', 'Condition', 'ErrorState', 'Expr', 'NormalState', 'OrExpr', 'Sensor', 'Signal', 'State', 'Transition'];
+        return ['Action', 'Actuator', 'AndExpr', 'App', 'Brick', 'Condition', 'DelayTransition', 'ErrorState', 'Expr', 'NormalState', 'OrExpr', 'Sensor', 'SensorTransition', 'Signal', 'State', 'Transition'];
     }
 
     protected override computeIsSubtype(subtype: string, supertype: string): boolean {
@@ -213,6 +238,10 @@ export class ArduinoMlAstReflection extends AbstractAstReflection {
             case NormalState: {
                 return this.isSubtype(State, supertype);
             }
+            case DelayTransition:
+            case SensorTransition: {
+                return this.isSubtype(Transition, supertype);
+            }
             default: {
                 return false;
             }
@@ -226,6 +255,8 @@ export class ArduinoMlAstReflection extends AbstractAstReflection {
                 return Actuator;
             }
             case 'App:initial':
+            case 'DelayTransition:next':
+            case 'SensorTransition:next':
             case 'Transition:next': {
                 return State;
             }
@@ -253,7 +284,8 @@ export class ArduinoMlAstReflection extends AbstractAstReflection {
                 return {
                     name: 'NormalState',
                     mandatory: [
-                        { name: 'actions', type: 'array' }
+                        { name: 'actions', type: 'array' },
+                        { name: 'transitions', type: 'array' }
                     ]
                 };
             }

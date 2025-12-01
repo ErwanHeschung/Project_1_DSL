@@ -100,8 +100,8 @@ function compileNormalState(state, fileNode) {
     for (const action of state.actions) {
         compileAction(action, fileNode);
     }
-    if (state.transition !== null) {
-        compileTransition(state.transition, fileNode);
+    for (const transition of state.transitions) {
+        compileTransition(transition, fileNode);
     }
     fileNode.append(`\t\t\tbreak;`, langium_1.NL);
 }
@@ -110,21 +110,27 @@ function compileAction(action, fileNode) {
     fileNode.append(`\t\t\tdigitalWrite(${(_a = action.actuator.ref) === null || _a === void 0 ? void 0 : _a.outputPin}, ${action.value.value});`, langium_1.NL);
 }
 function compileTransition(transition, fileNode) {
-    var _a;
-    const sensors = collectSensors(transition.condition);
-    fileNode.append(`\t\t\t// Update bounce guards`, langium_1.NL);
-    sensors.forEach((sensor) => {
-        fileNode.append(`\t\t\t${sensor.name}BounceGuard = millis() - ${sensor.name}LastDebounceTime > debounce;`, langium_1.NL);
-    });
-    fileNode.append(langium_1.NL);
-    const conditionCode = compileExpr(transition.condition);
-    fileNode.append(`\t\t\t// Check transition condition`, langium_1.NL);
-    fileNode.append(`\t\t\tif (${conditionCode}) {`, langium_1.NL);
-    sensors.forEach((sensor) => {
-        fileNode.append(`\t\t\t\t${sensor.name}LastDebounceTime = millis();`, langium_1.NL);
-    });
-    fileNode.append(`\t\t\t\tcurrentState = ${(_a = transition.next.ref) === null || _a === void 0 ? void 0 : _a.name};`, langium_1.NL);
-    fileNode.append(`\t\t\t}`, langium_1.NL);
+    var _a, _b;
+    if ('delay' in transition) {
+        fileNode.append(`\t\t\tdelay(${transition.delay});`, langium_1.NL);
+        fileNode.append(`\t\t\tcurrentState = ${(_a = transition.next.ref) === null || _a === void 0 ? void 0 : _a.name};`, langium_1.NL);
+    }
+    else if ('condition' in transition) {
+        const sensors = collectSensors(transition.condition);
+        fileNode.append(`\t\t\t// Update bounce guards`, langium_1.NL);
+        sensors.forEach((sensor) => {
+            fileNode.append(`\t\t\t${sensor.name}BounceGuard = millis() - ${sensor.name}LastDebounceTime > debounce;`, langium_1.NL);
+        });
+        fileNode.append(langium_1.NL);
+        const conditionCode = compileExpr(transition.condition);
+        fileNode.append(`\t\t\t// Check transition condition`, langium_1.NL);
+        fileNode.append(`\t\t\tif (${conditionCode}) {`, langium_1.NL);
+        sensors.forEach((sensor) => {
+            fileNode.append(`\t\t\t\t${sensor.name}LastDebounceTime = millis();`, langium_1.NL);
+        });
+        fileNode.append(`\t\t\t\tcurrentState = ${(_b = transition.next.ref) === null || _b === void 0 ? void 0 : _b.name};`, langium_1.NL);
+        fileNode.append(`\t\t\t}`, langium_1.NL);
+    }
 }
 function compileExpr(expr) {
     if ("left" in expr && "right" in expr) {
