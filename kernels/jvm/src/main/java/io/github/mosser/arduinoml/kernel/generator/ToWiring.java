@@ -8,7 +8,7 @@ import io.github.mosser.arduinoml.kernel.structural.*;
  * Quick and dirty visitor to support the generation of Wiring code
  */
 public class ToWiring extends Visitor<StringBuffer> {
-	enum PASS {ONE, TWO}
+	enum PASS {ONE, TWO, THREE}
 
 
 	public ToWiring() {
@@ -23,8 +23,14 @@ public class ToWiring extends Visitor<StringBuffer> {
 	public void visit(App app) {
 		//first pass, create global vars
 		context.put("pass", PASS.ONE);
+
+        if (app.getLCDDisplay() != null) {
+            app.getLCDDisplay().accept(this);
+        }
+
 		w("// Wiring code generated from an ArduinoML model\n");
 		w(String.format("// Application name: %s\n", app.getName())+"\n");
+
 
 		w("long debounce = 200;\n");
 		w("\nenum STATE {");
@@ -49,6 +55,9 @@ public class ToWiring extends Visitor<StringBuffer> {
 		for(Brick brick: app.getBricks()){
 			brick.accept(this);
 		}
+        if (app.getLCDDisplay() != null) {
+            app.getLCDDisplay().accept(this);
+        }
 		w("}\n");
 
 		w("\nvoid loop() {\n" +
@@ -56,8 +65,16 @@ public class ToWiring extends Visitor<StringBuffer> {
 		for(State state: app.getStates()){
 			state.accept(this);
 		}
-		w("\t}\n" +
-			"}");
+
+        context.put("pass",PASS.THREE);
+
+		w("\t}\n");
+
+        if (app.getLCDDisplay() != null) {
+            app.getLCDDisplay().accept(this);
+        }
+
+        w("}");
 	}
 
 	@Override
@@ -188,6 +205,28 @@ public class ToWiring extends Visitor<StringBuffer> {
 			return;
 		}
 	}
+
+    @Override
+    public void visit(LCDDisplay lcdDisplay) {
+        if (context.get("pass") == PASS.ONE) {
+            w("\n#include <LiquidCrystal.h>\n");
+            w("LiquidCrystal lcd(10, 11, 12, 13, 14, 15, 16);\n");
+        }
+
+        if (context.get("pass") == PASS.TWO) {
+            w("  lcd.begin(16, 2);\n");
+            String prefix = lcdDisplay.getPrefix() != null ? lcdDisplay.getPrefix() : "";
+            w(String.format("  lcd.setCursor(0,0);\n"));
+            w(String.format("  lcd.print(\"%s\");\n", prefix));
+        }
+
+        if (context.get("pass") == PASS.THREE) {
+            Brick brick = lcdDisplay.getBrick();
+
+            w(String.format("\tlcd.setCursor(0,1);\n"));
+            w(String.format("\tlcd.print(digitalRead(%d) == HIGH ? \"ON \" : \"OFF\");\n", brick.getPin()));
+        }
+    }
 
 	@Override
 	public void visit(Action action) {

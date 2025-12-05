@@ -6,9 +6,11 @@ import io.github.mosser.arduinoml.kernel.behavioral.State
 import io.github.mosser.arduinoml.kernel.behavioral.Condition
 import io.github.mosser.arduinoml.kernel.behavioral.And
 import io.github.mosser.arduinoml.kernel.behavioral.Or
+import io.github.mosser.arduinoml.kernel.behavioral.LCDDisplay
 import io.github.mosser.arduinoml.kernel.structural.Actuator
 import io.github.mosser.arduinoml.kernel.structural.Sensor
 import io.github.mosser.arduinoml.kernel.structural.SIGNAL
+import io.github.mosser.arduinoml.kernel.structural.Brick
 
 abstract class GroovuinoMLBasescript extends Script {
 //	public static Number getDuration(Number number, TimeUnit unit) throws IOException {
@@ -78,9 +80,20 @@ abstract class GroovuinoMLBasescript extends Script {
 						[becomes: { sig2 ->
 							SIGNAL sigObj = resolve(sig2) as SIGNAL
 							Condition cond2 = new Condition(sensor: sObj, value: sigObj)
+
 							def existing = fromState.transition.expression
-							And a = new And(leftExpression: existing, rightExpression: cond2)
-							fromState.transition.expression = a
+
+							if (existing instanceof Or) {
+								existing.rightExpression = new And(
+									leftExpression: existing.rightExpression,
+									rightExpression: cond2
+								)
+							} else {
+								existing = new And(leftExpression: existing, rightExpression: cond2)
+							}
+
+							fromState.transition.expression = existing
+
 							[and: andClosure, or: orClosure]
 						}]
 					}
@@ -90,9 +103,12 @@ abstract class GroovuinoMLBasescript extends Script {
 						[becomes: { sig2 ->
 							SIGNAL sigObj = resolve(sig2) as SIGNAL
 							Condition cond2 = new Condition(sensor: sObj, value: sigObj)
+
 							def existing = fromState.transition.expression
-							Or o = new Or(leftExpression: existing, rightExpression: cond2)
-							fromState.transition.expression = o
+
+							def newOr = new Or(leftExpression: existing, rightExpression: cond2)
+							fromState.transition.expression = newOr
+
 							[and: andClosure, or: orClosure]
 						}]
 					}
@@ -110,7 +126,18 @@ abstract class GroovuinoMLBasescript extends Script {
 			}]
 		}]
 	}
-	
+
+	def display(String name) {
+		Brick brick = resolve(name) as Brick
+		def model = ((GroovuinoMLBinding)this.getBinding()).groovuinoMLModel
+
+		model.createLCD(brick, "")
+
+		[prefixed: { String newPrefix ->
+			model.createLCD(brick, newPrefix)
+		}]
+	}
+
 	// export name
 	def export(String name) {
 		println(((GroovuinoMLBinding) this.getBinding()).getGroovuinoMLModel().generateCode(name).toString())

@@ -16,6 +16,7 @@ public class GroovuinoMLModel {
 	private List<Brick> bricks;
 	private List<State> states;
 	private State initialState;
+	private LCDDisplay LCDDisplay;
 	
 	private Binding binding;
 	
@@ -63,6 +64,13 @@ public class GroovuinoMLModel {
 		transition.setDelay(delay);
 		from.setTransition(transition);
 	}
+
+	public void createLCD(Brick brick, String prefix) {
+		LCDDisplay LCD = new LCDDisplay();
+		LCD.setBrick(brick);
+		LCD.setPrefix(prefix);
+		this.LCDDisplay = LCD;
+	}
 	
 	public void setInitialState(State state) {
 		this.initialState = state;
@@ -75,6 +83,7 @@ public class GroovuinoMLModel {
 		app.setBricks(this.bricks);
 		app.setStates(this.states);
 		app.setInitial(this.initialState);
+		app.setLCDDisplay(this.LCDDisplay);
 		Visitor codeGenerator = new ToWiring();
 		app.accept(codeGenerator);
 		
