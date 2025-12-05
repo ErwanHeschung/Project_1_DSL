@@ -14,8 +14,24 @@ export function isBrick(item: unknown): item is Brick {
     return reflection.isInstance(item, Brick);
 }
 
+export type Expr = AndExpr | Condition | OrExpr;
+
+export const Expr = 'Expr';
+
+export function isExpr(item: unknown): item is Expr {
+    return reflection.isInstance(item, Expr);
+}
+
+export type State = ErrorState | NormalState;
+
+export const State = 'State';
+
+export function isState(item: unknown): item is State {
+    return reflection.isInstance(item, State);
+}
+
 export interface Action extends AstNode {
-    readonly $container: State;
+    readonly $container: NormalState;
     readonly $type: 'Action';
     actuator: Reference<Actuator>
     value: Signal
@@ -40,9 +56,23 @@ export function isActuator(item: unknown): item is Actuator {
     return reflection.isInstance(item, Actuator);
 }
 
+export interface AndExpr extends AstNode {
+    readonly $container: AndExpr | OrExpr | SensorTransition;
+    readonly $type: 'AndExpr';
+    left: Expr
+    right: Expr
+}
+
+export const AndExpr = 'AndExpr';
+
+export function isAndExpr(item: unknown): item is AndExpr {
+    return reflection.isInstance(item, AndExpr);
+}
+
 export interface App extends AstNode {
     readonly $type: 'App';
     bricks: Array<Brick>
+    errorLed?: number
     initial: Reference<State>
     name: string
     states: Array<State>
@@ -52,6 +82,59 @@ export const App = 'App';
 
 export function isApp(item: unknown): item is App {
     return reflection.isInstance(item, App);
+}
+
+export interface Condition extends AstNode {
+    readonly $container: AndExpr | OrExpr | SensorTransition;
+    readonly $type: 'Condition';
+    sensor: Reference<Sensor>
+    value: Signal
+}
+
+export const Condition = 'Condition';
+
+export function isCondition(item: unknown): item is Condition {
+    return reflection.isInstance(item, Condition);
+}
+
+export interface ErrorState extends AstNode {
+    readonly $container: App;
+    readonly $type: 'ErrorState';
+    errorCode: number
+    name: string
+}
+
+export const ErrorState = 'ErrorState';
+
+export function isErrorState(item: unknown): item is ErrorState {
+    return reflection.isInstance(item, ErrorState);
+}
+
+export interface NormalState extends AstNode {
+    readonly $container: App;
+    readonly $type: 'NormalState';
+    actions: Array<Action>
+    name: string
+    transitions: Array<Transition>
+}
+
+export const NormalState = 'NormalState';
+
+export function isNormalState(item: unknown): item is NormalState {
+    return reflection.isInstance(item, NormalState);
+}
+
+export interface OrExpr extends AstNode {
+    readonly $container: AndExpr | OrExpr | SensorTransition;
+    readonly $type: 'OrExpr';
+    left: Expr
+    right: Expr
+}
+
+export const OrExpr = 'OrExpr';
+
+export function isOrExpr(item: unknown): item is OrExpr {
+    return reflection.isInstance(item, OrExpr);
 }
 
 export interface Sensor extends AstNode {
@@ -68,9 +151,9 @@ export function isSensor(item: unknown): item is Sensor {
 }
 
 export interface Signal extends AstNode {
-    readonly $container: Action | Transition;
+    readonly $container: Action | Condition;
     readonly $type: 'Signal';
-    value: string
+    value: 'HIGH' | 'LOW'
 }
 
 export const Signal = 'Signal';
@@ -79,26 +162,10 @@ export function isSignal(item: unknown): item is Signal {
     return reflection.isInstance(item, Signal);
 }
 
-export interface State extends AstNode {
-    readonly $container: App;
-    readonly $type: 'State';
-    actions: Array<Action>
-    name: string
-    transition: Transition
-}
-
-export const State = 'State';
-
-export function isState(item: unknown): item is State {
-    return reflection.isInstance(item, State);
-}
-
 export interface Transition extends AstNode {
-    readonly $container: State;
-    readonly $type: 'Transition';
+    readonly $container: NormalState;
+    readonly $type: 'DelayTransition' | 'SensorTransition' | 'Transition';
     next: Reference<State>
-    sensor: Reference<Sensor>
-    value: Signal
 }
 
 export const Transition = 'Transition';
@@ -107,12 +174,44 @@ export function isTransition(item: unknown): item is Transition {
     return reflection.isInstance(item, Transition);
 }
 
+export interface DelayTransition extends Transition {
+    readonly $container: NormalState;
+    readonly $type: 'DelayTransition';
+    delay: number
+}
+
+export const DelayTransition = 'DelayTransition';
+
+export function isDelayTransition(item: unknown): item is DelayTransition {
+    return reflection.isInstance(item, DelayTransition);
+}
+
+export interface SensorTransition extends Transition {
+    readonly $container: NormalState;
+    readonly $type: 'SensorTransition';
+    condition: Expr
+}
+
+export const SensorTransition = 'SensorTransition';
+
+export function isSensorTransition(item: unknown): item is SensorTransition {
+    return reflection.isInstance(item, SensorTransition);
+}
+
 export interface ArduinoMlAstType {
     Action: Action
     Actuator: Actuator
+    AndExpr: AndExpr
     App: App
     Brick: Brick
+    Condition: Condition
+    DelayTransition: DelayTransition
+    ErrorState: ErrorState
+    Expr: Expr
+    NormalState: NormalState
+    OrExpr: OrExpr
     Sensor: Sensor
+    SensorTransition: SensorTransition
     Signal: Signal
     State: State
     Transition: Transition
@@ -121,7 +220,7 @@ export interface ArduinoMlAstType {
 export class ArduinoMlAstReflection extends AbstractAstReflection {
 
     getAllTypes(): string[] {
-        return ['Action', 'Actuator', 'App', 'Brick', 'Sensor', 'Signal', 'State', 'Transition'];
+        return ['Action', 'Actuator', 'AndExpr', 'App', 'Brick', 'Condition', 'DelayTransition', 'ErrorState', 'Expr', 'NormalState', 'OrExpr', 'Sensor', 'SensorTransition', 'Signal', 'State', 'Transition'];
     }
 
     protected override computeIsSubtype(subtype: string, supertype: string): boolean {
@@ -129,6 +228,19 @@ export class ArduinoMlAstReflection extends AbstractAstReflection {
             case Actuator:
             case Sensor: {
                 return this.isSubtype(Brick, supertype);
+            }
+            case AndExpr:
+            case Condition:
+            case OrExpr: {
+                return this.isSubtype(Expr, supertype);
+            }
+            case ErrorState:
+            case NormalState: {
+                return this.isSubtype(State, supertype);
+            }
+            case DelayTransition:
+            case SensorTransition: {
+                return this.isSubtype(Transition, supertype);
             }
             default: {
                 return false;
@@ -143,10 +255,12 @@ export class ArduinoMlAstReflection extends AbstractAstReflection {
                 return Actuator;
             }
             case 'App:initial':
+            case 'DelayTransition:next':
+            case 'SensorTransition:next':
             case 'Transition:next': {
                 return State;
             }
-            case 'Transition:sensor': {
+            case 'Condition:sensor': {
                 return Sensor;
             }
             default: {
@@ -166,11 +280,12 @@ export class ArduinoMlAstReflection extends AbstractAstReflection {
                     ]
                 };
             }
-            case 'State': {
+            case 'NormalState': {
                 return {
-                    name: 'State',
+                    name: 'NormalState',
                     mandatory: [
-                        { name: 'actions', type: 'array' }
+                        { name: 'actions', type: 'array' },
+                        { name: 'transitions', type: 'array' }
                     ]
                 };
             }
