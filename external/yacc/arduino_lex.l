@@ -17,6 +17,9 @@
 "<="                    return LEFT;
 "->"                    return INITSTATE;
 "after"                 return KAFTER;
+"error_led"             return KERROR_LED;
+"error"                 return KERROR;
+"code"                  return KCODE;
 "and"                   return AND;
 "or"                    return OR;
 

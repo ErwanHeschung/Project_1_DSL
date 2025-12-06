@@ -73,12 +73,20 @@ Action *add_action(Action *list, Action *a);
 //
 // ========== STATES ==========
 //
-typedef struct arduino_state State;
+typedef struct arduino_state {
+  int lineno;
+  char *name;
+  struct arduino_action *actions;
+  struct arduino_transition *transitions;
+  int error_code; // 0 for normal states, >0 for error states
+  struct arduino_state *next;
+} State;
 
 // Make a new state named `var` with a list of `actions` and a `transition`
 // `initial` must be one if the state is the initial one
 State *make_state(char *var, Action *actions, Transition *transition,
                   int initial);
+State *make_error_state(char *name, int error_code);
 // Add a state to a list of states
 State *add_state(State *list, State *a);
 
@@ -87,6 +95,6 @@ State *add_state(State *list, State *a);
 //
 
 /// emit the code for the parsed configuration
-void emit_code(char *appname, Brick *brick_list, State *state_list);
+void emit_code(char *appname, int error_led, Brick *brick_list, State *state_list);
 
 #endif // ARDUINO_H
