@@ -57,6 +57,8 @@ typedef struct arduino_transition Transition;
 
 /// Make a new transition (when `var` is `signal` goto `newstate`
 Transition *make_transition(Expression* expression, char *newstate);
+Transition *make_delay_transition(int delay, char *newstate);
+Transition *add_transition(Transition *list, Transition *t);
 
 //
 // ========== ACTIONS ==========

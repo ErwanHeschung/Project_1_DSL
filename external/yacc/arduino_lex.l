@@ -16,11 +16,12 @@
 "=>"                    return RIGHT;
 "<="                    return LEFT;
 "->"                    return INITSTATE;
+"after"                 return KAFTER;
 "and"                   return AND;
 "or"                    return OR;
 
   /* ==== port numbers (as strings) and identifiers */
-[1-9]|(1[012])          { yylval.value = atoi(yytext); return PORT_NUMBER; }
+[0-9]+                  { yylval.value = atoi(yytext); return INTEGER; }
 [a-zA-Z][a-zA-Z0-9_]+   { yylval.name  = strdup(yytext); return IDENT; }
 
   /* ==== Spaces and comments ==== */

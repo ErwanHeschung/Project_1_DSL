@@ -29,13 +29,13 @@ void yyerror(const char *s);
     struct arduino_expression  *expression;
 };
 
-%token KAPPL KSENSOR KACTUATOR KIS LEFT RIGHT INITSTATE
+%token KAPPL KSENSOR KACTUATOR KIS LEFT RIGHT INITSTATE KAFTER
 %token  <name>          IDENT KHIGH KLOW
-%token  <value>         PORT_NUMBER
+%token  <value>         INTEGER
 
 %type   <name>          name
 %type   <value>         signal port
-%type   <transition>    transition
+%type   <transition>    transition transitions
 %type   <action>        action actions
 %type   <state>         state states
 %type   <brick>         brick bricks
@@ -61,8 +61,8 @@ states:         states state                                { $$ = add_state($1,
       |         /*empty */                                  { $$ = NULL; }
       ;
 
-state:          name '{' actions  transition '}'            { $$ = make_state($1, $3, $4, 0); }
-      |         INITSTATE name '{' actions  transition '}'  { $$ = make_state($2, $4, $5, 1); }
+state:          name '{' actions  transitions '}'            { $$ = make_state($1, $3, $4, 0); }
+      |         INITSTATE name '{' actions  transitions '}'  { $$ = make_state($2, $4, $5, 1); }
       ;
 
 
@@ -74,8 +74,13 @@ actions:        actions action ';'                          { $$ = add_action($1
 action:          name LEFT signal                           { $$ = make_action($1, $3); }
       ;
 
-transition:     expression RIGHT name ';'                   { $$ = make_transition($1, $3); }
-           |     error ';'                                   { yyerrok; }
+transitions:    transitions transition ';'                  { $$ = add_transition($1, $2); }
+           |    transition ';'                              { $$ = $1; }
+           |    error ';'                                   { yyerrok; }
+           ;
+
+transition:     expression RIGHT name                       { $$ = make_transition($1, $3); }
+           |    KAFTER INTEGER RIGHT name                   { $$ = make_delay_transition($2, $4); }
            ;
 
 signal:         KHIGH                                       { $$ = 1; }
@@ -92,7 +97,7 @@ expression:     expression OR expression                    {$$ = make_binary_ex
           ;
 
 name:           IDENT          ;
-port:           PORT_NUMBER    ;
+port:           INTEGER        ;
 
 
 %%

@@ -1,0 +1,15 @@
+application TemporalSwitch {
+  sensor button : 9;
+  actuator led : 12;
+
+  -> off {
+    led <= LOW;
+    button is HIGH => on;
+  }
+
+  on {
+    led <= HIGH;
+    button is LOW => off;
+    after 1000 => off;
+  }
+}

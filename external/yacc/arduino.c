@@ -69,10 +69,15 @@ Brick *add_brick(Brick *b, Brick *list) {
 // ======================================================================
 //                            T R A N S I T I O N
 // ======================================================================
+enum TransitionType { TRANS_SENSOR, TRANS_DELAY };
+
 struct arduino_transition {
   int lineno;
-  Expression* expression;
+  enum TransitionType type;
+  Expression* expression; // Used if type == TRANS_SENSOR
+  int delay;              // Used if type == TRANS_DELAY
   char *newstate;
+  struct arduino_transition *next;
 };
 
 /// Make a new transition (when `var` is `signal` goto `newstate`
@@ -80,9 +85,34 @@ Transition *make_transition(Expression* expression, char *newstate) {
   Transition *p = must_malloc(sizeof(Transition));
 
   p->lineno = yylineno;
+  p->type = TRANS_SENSOR;
   p->expression = expression;
   p->newstate = newstate;
+  p->next = NULL;
   return p;
+}
+
+Transition *make_delay_transition(int delay, char *newstate) {
+  Transition *p = must_malloc(sizeof(Transition));
+
+  p->lineno = yylineno;
+  p->type = TRANS_DELAY;
+  p->delay = delay;
+  p->newstate = newstate;
+  p->next = NULL;
+  return p;
+}
+
+/// Add a transition to a list of transitions
+Transition *add_transition(Transition *list, Transition *t) {
+  if (list) {
+    Transition *tmp = list;
+    while (tmp->next)
+      tmp = tmp->next;
+    tmp->next = t;
+    return list;
+  }
+  return t;
 }
 
 // ======================================================================
@@ -125,7 +155,7 @@ struct arduino_state {
   int lineno;
   char *name;
   Action *actions;
-  Transition *transition;
+  Transition *transitions;
   struct arduino_state *next;
 };
 
@@ -141,14 +171,14 @@ static int find_state(char *name, State *list) {
 
 // Make a new state named `var` with a list of `actions` and a `transition`
 // `initial` must be one if the state is the initial one
-State *make_state(char *var, Action *actions, Transition *transition,
+State *make_state(char *var, Action *actions, Transition *transitions,
                   int initial) {
   State *p = must_malloc(sizeof(State));
 
   p->lineno = yylineno;
   p->name = var;
   p->actions = actions;
-  p->transition = transition;
+  p->transitions = transitions;
   p->next = NULL;
   if (initial)
     initial_state = p; // Keep a reference on the initial state
@@ -229,8 +259,10 @@ static void check_actions(Brick *brick_list, Action *list) {
 
 static void check_transition(Brick *brick_list, State *state_list,
                              Transition *trans) {
-  // Verify that sensors in the expression are declared
-  check_expression(brick_list, trans->expression, trans->lineno);
+  if (trans->type == TRANS_SENSOR) {
+    // Verify that sensors in the expression are declared
+    check_expression(brick_list, trans->expression, trans->lineno);
+  }
   // Verify that the next state exists
   if (!find_state(trans->newstate, state_list))
     error_msg(trans->lineno, "undeclared state '%s'", trans->newstate);
@@ -239,7 +271,9 @@ static void check_transition(Brick *brick_list, State *state_list,
 static void check_states(Brick *brick_list, State *state_list) {
   for (State *current = state_list; current; current = current->next) {
     check_actions(brick_list, current->actions);
-    check_transition(brick_list, state_list, current->transition);
+    for (Transition *t = current->transitions; t; t = t->next) {
+      check_transition(brick_list, state_list, t);
+    }
     if (find_state(current->name, current->next))
       error_msg(current->lineno, "duplicate state name: '%s'", current->name);
   }
@@ -308,23 +342,44 @@ static void emit_actions(Action *list) {
            p->sig_value ? "HIGH" : "LOW");
 }
 
-static void emit_transition(char *current_state, Transition *transition) {
+static void emit_transitions(char *current_state, Transition *list) {
   printf("  boolean guard = millis() - time > debounce;\n");
-  printf("  if (");
-  emit_expression(transition->expression);
-  printf(" && guard) {\n");
-  printf("    time = millis();\n");
-  printf("    state_%s();\n", transition->newstate);
-  printf("  } else {\n");
-  printf("    state_%s();\n", current_state);
-  printf("  }\n");
+  
+  int first = 1;
+  for (Transition *t = list; t; t = t->next) {
+    if (first) {
+      printf("  if (");
+      first = 0;
+    } else {
+      printf(" else if (");
+    }
+
+    if (t->type == TRANS_SENSOR) {
+      emit_expression(t->expression);
+      printf(" && guard) {\n");
+    } else { // TRANS_DELAY
+      printf("millis() - time > %d) {\n", t->delay);
+    }
+
+    printf("    time = millis();\n");
+    printf("    state_%s();\n", t->newstate);
+    printf("  }");
+  }
+
+  if (first) {
+      printf("  state_%s();\n", current_state);
+  } else {
+      printf(" else {\n");
+      printf("    state_%s();\n", current_state);
+      printf("  }\n");
+  }
 }
 
 static void emit_states(State *list) {
   for (State *p = list; p; p = p->next) {
     printf("void state_%s() {\n", p->name);
     emit_actions(p->actions);
-    emit_transition(p->name, p->transition);
+    emit_transitions(p->name, p->transitions);
     printf("}\n\n");
   }
 }
