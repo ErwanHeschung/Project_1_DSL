@@ -1,0 +1,21 @@
+// A DualCheck ArduinoML file with logical expressions    -*- mode: c -*-
+//
+// This example demonstrates using AND/OR operators in transitions
+
+application DualCheck {
+  // Declaring bricks
+  actuator buzzer : 11;
+  sensor b1 : 8;
+  sensor b2 : 9;
+
+  // Declaring states
+  -> idle {
+    buzzer <= LOW;
+    b1 is HIGH and b2 is HIGH => on;
+  }
+
+  on {
+    buzzer <= HIGH;
+    b1 is LOW or b2 is LOW => idle;
+  }
+}
