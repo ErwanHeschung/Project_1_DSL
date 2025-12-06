@@ -1,0 +1,19 @@
+// RedButton ArduinoML file converted to ArduinoML syntax
+//
+// Initial state: off
+
+application RedButton {
+
+  actuator red_led : 12;
+  sensor button    : 8;
+
+  -> off {
+    red_led <= LOW;
+    button is HIGH => on;
+  }
+
+  on {
+    red_led <= HIGH;
+    button is HIGH => off;
+  }
+}

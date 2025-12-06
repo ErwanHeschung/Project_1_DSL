@@ -1,0 +1,28 @@
+// MultiState ArduinoML file converted to ArduinoML syntax
+//
+// Initial state: buzz
+
+application MultiState {
+
+  actuator led    : 12;
+  actuator buzzer : 11;
+  sensor button   : 8;
+
+  -> buzz {
+    buzzer <= HIGH;
+    led <= LOW;
+    button is HIGH => led_on;
+  }
+
+  led_on {
+    buzzer <= LOW;
+    led <= HIGH;
+    button is HIGH => off;
+  }
+
+  off {
+    buzzer <= LOW;
+    led <= LOW;
+    button is HIGH => buzz;
+  }
+}

@@ -9,7 +9,6 @@ application TemporalSwitch {
 
   on {
     led <= HIGH;
-    button is LOW => off;
     after 1000 => off;
   }
 }

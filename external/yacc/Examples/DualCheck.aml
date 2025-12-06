@@ -3,12 +3,11 @@
 // This example demonstrates using AND/OR operators in transitions
 
 application DualCheck {
-  // Declaring bricks
+  
   actuator buzzer : 11;
   sensor b1 : 8;
   sensor b2 : 9;
 
-  // Declaring states
   -> idle {
     buzzer <= LOW;
     b1 is HIGH and b2 is HIGH => on;
