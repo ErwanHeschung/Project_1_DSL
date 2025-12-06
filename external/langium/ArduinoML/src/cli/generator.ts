@@ -83,9 +83,11 @@ function compile(app: App, fileNode: CompositeGeneratorNode) {
 function compileSetup(app: App, fileNode: CompositeGeneratorNode) {
   fileNode.append(`void setup() {`, NL);
 
-  fileNode.append(`\t// Initialize error LED`, NL);
-  fileNode.append(`\tpinMode(ERROR_LED_PIN, OUTPUT);`, NL);
-  fileNode.append(`\tdigitalWrite(ERROR_LED_PIN, LOW);`, NL);
+  if (app.errorLed) {
+    fileNode.append(`\t// Initialize error LED`, NL);
+    fileNode.append(`\tpinMode(ERROR_LED_PIN, OUTPUT);`, NL);
+    fileNode.append(`\tdigitalWrite(ERROR_LED_PIN, LOW);`, NL);
+  }
   fileNode.append(NL);
 
   fileNode.append(`\t// Initialize sensors and actuators`, NL);
