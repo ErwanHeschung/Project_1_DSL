@@ -38,8 +38,9 @@ function compile(app: App, fileNode: CompositeGeneratorNode) {
   fileNode.append(`long debounce = 200;`, NL, NL);
 
   fileNode.append(`// Pin definitions`, NL);
-  fileNode.append(`#define ERROR_LED_PIN ${app.errorLed}`, NL, NL);
-
+  if (app.errorLed) {
+    fileNode.append(`#define ERROR_LED_PIN ${app.errorLed}`, NL, NL);
+  }
   const errorStates: ErrorState[] = app.states.filter(isErrorState);
   if (errorStates.length > 0) {
     fileNode.append(`// Error codes`, NL);
@@ -161,11 +162,10 @@ function compileTransition(
   transition: Transition,
   fileNode: CompositeGeneratorNode,
 ) {
-    if ('delay' in transition) {
+  if ("delay" in transition) {
     fileNode.append(`\t\t\tdelay(${transition.delay});`, NL);
     fileNode.append(`\t\t\tcurrentState = ${transition.next.ref?.name};`, NL);
-  } 
-  else if ('condition' in transition) {
+  } else if ("condition" in transition) {
     const sensors = collectSensors(transition.condition);
 
     fileNode.append(`\t\t\t// Update bounce guards`, NL);

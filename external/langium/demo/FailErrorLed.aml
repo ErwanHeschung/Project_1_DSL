@@ -1,0 +1,10 @@
+app DualDoor initial state idle {
+    bricks
+      Sensor b1: 8
+      Sensor b2: 9
+    states
+      idle {
+        b1 is HIGH AND b2 is HIGH => ViolationError
+      }
+      error, ViolationError, code, 3
+}
