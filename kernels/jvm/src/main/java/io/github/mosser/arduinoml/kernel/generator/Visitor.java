@@ -6,6 +6,7 @@ import java.util.Map;
 import io.github.mosser.arduinoml.kernel.App;
 import io.github.mosser.arduinoml.kernel.behavioral.*;
 import io.github.mosser.arduinoml.kernel.structural.Actuator;
+import io.github.mosser.arduinoml.kernel.structural.LCDDisplay;
 import io.github.mosser.arduinoml.kernel.structural.Sensor;
 
 public abstract class Visitor<T> {

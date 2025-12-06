@@ -6,7 +6,7 @@ import io.github.mosser.arduinoml.kernel.behavioral.State
 import io.github.mosser.arduinoml.kernel.behavioral.Condition
 import io.github.mosser.arduinoml.kernel.behavioral.And
 import io.github.mosser.arduinoml.kernel.behavioral.Or
-import io.github.mosser.arduinoml.kernel.behavioral.LCDDisplay
+import io.github.mosser.arduinoml.kernel.structural.LCDDisplay
 import io.github.mosser.arduinoml.kernel.structural.Actuator
 import io.github.mosser.arduinoml.kernel.structural.Sensor
 import io.github.mosser.arduinoml.kernel.structural.SIGNAL
@@ -70,9 +70,12 @@ abstract class GroovuinoMLBasescript extends Script {
 					State toState = resolve(state2) as State
 					def model = ((GroovuinoMLBinding)this.getBinding()).groovuinoMLModel
 
-					if (fromState.transition == null) {
+					if (fromState.transitions.isEmpty()) {
 						model.createTransition(fromState, toState, condition)
 					}
+
+					//only support one transition for now (taking the last one)
+					def lastTransition = fromState.transitions[-1]
 
 					def andClosure, orClosure
 					andClosure = { s2 ->
@@ -81,7 +84,7 @@ abstract class GroovuinoMLBasescript extends Script {
 							SIGNAL sigObj = resolve(sig2) as SIGNAL
 							Condition cond2 = new Condition(sensor: sObj, value: sigObj)
 
-							def existing = fromState.transition.expression
+							def existing = lastTransition.expression
 
 							if (existing instanceof Or) {
 								existing.rightExpression = new And(
@@ -92,7 +95,7 @@ abstract class GroovuinoMLBasescript extends Script {
 								existing = new And(leftExpression: existing, rightExpression: cond2)
 							}
 
-							fromState.transition.expression = existing
+							lastTransition.expression = existing
 
 							[and: andClosure, or: orClosure]
 						}]
@@ -104,10 +107,10 @@ abstract class GroovuinoMLBasescript extends Script {
 							SIGNAL sigObj = resolve(sig2) as SIGNAL
 							Condition cond2 = new Condition(sensor: sObj, value: sigObj)
 
-							def existing = fromState.transition.expression
+							def existing = lastTransition.expression
 
 							def newOr = new Or(leftExpression: existing, rightExpression: cond2)
-							fromState.transition.expression = newOr
+							lastTransition.expression = newOr
 
 							[and: andClosure, or: orClosure]
 						}]
@@ -128,13 +131,14 @@ abstract class GroovuinoMLBasescript extends Script {
 	}
 
 	def display(String name) {
-		Brick brick = resolve(name) as Brick
-		def model = ((GroovuinoMLBinding)this.getBinding()).groovuinoMLModel
+		[on_bus: { bus ->
+			Brick brick = resolve(name) as Brick
+			def model = ((GroovuinoMLBinding)this.getBinding()).groovuinoMLModel
 
-		model.createLCD(brick, "")
-
-		[prefixed: { String newPrefix ->
-			model.createLCD(brick, newPrefix)
+			model.createLCD(brick, "",bus)
+			[prefixed: { String newPrefix ->
+				model.createLCD(brick, newPrefix,bus)
+			}]
 		}]
 	}
 

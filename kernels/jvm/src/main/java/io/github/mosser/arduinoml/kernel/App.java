@@ -1,6 +1,6 @@
 package io.github.mosser.arduinoml.kernel;
 
-import io.github.mosser.arduinoml.kernel.behavioral.LCDDisplay;
+import io.github.mosser.arduinoml.kernel.structural.LCDDisplay;
 import io.github.mosser.arduinoml.kernel.behavioral.State;
 import io.github.mosser.arduinoml.kernel.generator.Visitable;
 import io.github.mosser.arduinoml.kernel.generator.Visitor;

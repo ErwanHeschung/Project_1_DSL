@@ -1,7 +1,7 @@
-sensor "button" pin 8
+sensor "button" pin 10
 actuator "red_led" pin 9
 
-display "red_led" prefixed "RED LED :"
+display "red_led" on_bus 1 prefixed "RED LED :"
 
 state "off" means "red_led" becomes "low"
 state "on" means "red_led" becomes "high"

@@ -11,6 +11,7 @@ import io.github.mosser.arduinoml.kernel.structural.Actuator;
 import io.github.mosser.arduinoml.kernel.structural.Brick;
 import io.github.mosser.arduinoml.kernel.structural.SIGNAL;
 import io.github.mosser.arduinoml.kernel.structural.Sensor;
+import io.github.mosser.arduinoml.kernel.structural.LCDDisplay;
 
 public class GroovuinoMLModel {
 	private List<Brick> bricks;
@@ -55,20 +56,21 @@ public class GroovuinoMLModel {
 		SignalTransition transition = new SignalTransition();
 		transition.setNext(to);
 		transition.setExpression(expression);
-		from.setTransition(transition);
+		from.addTransition(transition);
 	}
 
 	public void createTransition(State from, State to, int delay) {
 		TimeTransition transition = new TimeTransition();
 		transition.setNext(to);
 		transition.setDelay(delay);
-		from.setTransition(transition);
+		from.addTransition(transition);
 	}
 
-	public void createLCD(Brick brick, String prefix) {
+	public void createLCD(Brick brick, String prefix, int bus) {
 		LCDDisplay LCD = new LCDDisplay();
 		LCD.setBrick(brick);
 		LCD.setPrefix(prefix);
+		LCD.setBus(bus);
 		this.LCDDisplay = LCD;
 	}
 	

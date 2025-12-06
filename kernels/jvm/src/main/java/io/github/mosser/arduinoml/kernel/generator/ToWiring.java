@@ -2,9 +2,11 @@ package io.github.mosser.arduinoml.kernel.generator;
 
 import io.github.mosser.arduinoml.kernel.App;
 import io.github.mosser.arduinoml.kernel.behavioral.*;
-import io.github.mosser.arduinoml.kernel.structural.Actuator;
-import io.github.mosser.arduinoml.kernel.structural.Brick;
-import io.github.mosser.arduinoml.kernel.structural.Sensor;
+import io.github.mosser.arduinoml.kernel.structural.*;
+import io.github.mosser.arduinoml.kernel.utils.Validator;
+
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Quick and dirty visitor to support the generation of Wiring code
@@ -23,15 +25,14 @@ public class ToWiring extends Visitor<StringBuffer> {
 	@Override
 	public void visit(App app) {
 		// first pass, create global vars
+        w("// Wiring code generated from an ArduinoML model\n");
+        w(String.format("// Application name: %s\n", app.getName()) + "\n");
+        Validator.validatePinUsage(app);
 		context.put("pass", PASS.ONE);
 
         if (app.getLCDDisplay() != null) {
             app.getLCDDisplay().accept(this);
         }
-
-		w("// Wiring code generated from an ArduinoML model\n");
-		w(String.format("// Application name: %s\n", app.getName()) + "\n");
-
 
 		w("long debounce = 200;\n");
 		w("\nenum STATE {");
@@ -210,8 +211,16 @@ public class ToWiring extends Visitor<StringBuffer> {
     @Override
     public void visit(LCDDisplay lcdDisplay) {
         if (context.get("pass") == PASS.ONE) {
+            BUS bus = lcdDisplay.getBus();
+            StringBuilder pins = new StringBuilder();
+            for (String pin : bus.getPins()) {
+                pins.append(pin).append(", ");
+            }
+            // enlever la dernière virgule et espace
+            if (pins.length() > 2) pins.setLength(pins.length() - 2);
+
             w("\n#include <LiquidCrystal.h>\n");
-            w("LiquidCrystal lcd(10, 11, 12, 13, 14, 15, 16);\n");
+            w("LiquidCrystal lcd(" + pins.toString() + ");\n");
         }
 
         if (context.get("pass") == PASS.TWO) {

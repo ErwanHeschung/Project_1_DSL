@@ -1,12 +1,12 @@
-package io.github.mosser.arduinoml.kernel.behavioral;
+package io.github.mosser.arduinoml.kernel.structural;
 
 import io.github.mosser.arduinoml.kernel.generator.Visitable;
 import io.github.mosser.arduinoml.kernel.generator.Visitor;
-import io.github.mosser.arduinoml.kernel.structural.Brick;
 
 public class LCDDisplay implements Visitable {
     private Brick brick;
     private String prefix;
+    private BUS bus;
 
     public void setBrick(Brick brick) {
         this.brick = brick;
@@ -22,6 +22,14 @@ public class LCDDisplay implements Visitable {
 
     public String  getPrefix() {
         return prefix;
+    }
+
+    public void setBus(int num) {
+        this.bus = BUS.fromInt(num);
+    }
+
+    public BUS getBus(){
+        return bus;
     }
 
     @Override
