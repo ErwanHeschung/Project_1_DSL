@@ -29,12 +29,12 @@ void yyerror(const char *s);
     struct arduino_expression  *expression;
 };
 
-%token KAPPL KSENSOR KACTUATOR KIS LEFT RIGHT INITSTATE KAFTER
+%token KAPPL KSENSOR KACTUATOR KIS LEFT RIGHT INITSTATE KAFTER KERROR_LED KERROR KCODE
 %token  <name>          IDENT KHIGH KLOW
 %token  <value>         INTEGER
 
 %type   <name>          name
-%type   <value>         signal port
+%type   <value>         signal port error_led
 %type   <transition>    transition transitions
 %type   <action>        action actions
 %type   <state>         state states
@@ -45,8 +45,12 @@ void yyerror(const char *s);
 %left AND
 %%
 
-start:          KAPPL name '{' bricks  states '}'           { emit_code($2, $4, $5); }
+start:          KAPPL name '{' error_led bricks  states '}'           { emit_code($2, $4, $5, $6); }
      ;
+
+error_led:      KERROR_LED ':' INTEGER ';'                  { $$ = $3; }
+         |      /* empty */                                 { $$ = -1; }
+         ;
 
 bricks:         bricks brick ';'                            { $$ = add_brick($2, $1); }
       |         error ';'                                   { yyerrok; }
@@ -63,12 +67,12 @@ states:         states state                                { $$ = add_state($1,
 
 state:          name '{' actions  transitions '}'            { $$ = make_state($1, $3, $4, 0); }
       |         INITSTATE name '{' actions  transitions '}'  { $$ = make_state($2, $4, $5, 1); }
+      |         KERROR name KCODE INTEGER ';'                { $$ = make_error_state($2, $4); }
       ;
 
 
 actions:        actions action ';'                          { $$ = add_action($1, $2); }
-       |        action ';'                                  { $$ = $1; }
-       |        error ';'                                   { yyerrok; }
+       |        /* empty */                                 { $$ = NULL; }
        ;
 
 action:          name LEFT signal                           { $$ = make_action($1, $3); }

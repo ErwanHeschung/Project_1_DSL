@@ -1,0 +1,11 @@
+application DualDoor {
+  error_led : 10;
+  sensor b1 : 8;
+  sensor b2 : 9;
+
+  -> idle {
+    b1 is HIGH and b2 is HIGH => violation;
+  }
+
+  error violation code 3;
+}
